@@ -1,34 +1,35 @@
-# TaskBlaster - ADHD Task Card Printer
+# MCPOSprint - MCP Server for Thermal Printer Task Cards
 
-A modular system for generating and printing task cards from markdown and Notion. Optimized for thermal printers with direct USB ESC/POS printing and Docker containerization.
+A Model Context Protocol (MCP) server that enables thermal printer task card generation from markdown files and Notion databases. Provides real-time progress tracking and supports ESC/POS thermal printers.
 
 ## Features
 
+✅ **MCP Server**: Full Model Context Protocol support with 6 tools  
 ✅ **Static Cards**: Generate cards from markdown files  
 ✅ **Notion Integration**: Fetch and print today's tasks from Notion  
 ✅ **Thermal Printer Support**: Direct USB printing via ESC/POS protocol  
-✅ **Docker Ready**: Full containerization with direct USB printer support  
+✅ **Progress Tracking**: Real-time progress reporting prevents client timeouts  
 ✅ **Modular Architecture**: Clean separation of concerns  
 ✅ **QR Code Support**: Notion tasks include QR codes for quick access  
 
 ## 🚀 Installation
 
-### Native Installation (Recommended for Printing)
-
-For full printing functionality, install TaskBlaster natively on your system:
+Install MCPOSprint as an MCP server:
 
 ```bash
 # Clone the repository
-git clone https://github.com/your-username/taskblaster.git
-cd taskblaster
+git clone https://github.com/your-username/mcposprint.git
+cd mcposprint
 
 # Install with uv
 uv sync
-uv run taskblaster --setup
+
+# Start the MCP server
+uv run mcposprint
 ```
 
 ### System Requirements
-- **Python 3.11+**
+- **Python 3.10+**
 - **Direct USB printing** via ESC/POS protocol
 - **PIL/Pillow** for image generation
 - **libusb** for USB printer access
@@ -37,39 +38,40 @@ uv run taskblaster --setup
   - Windows: Included with python-escpos
 - **Notion API access** (optional, for Notion integration)
 
-## 🐳 Docker Usage (Full Support)
+## 🔧 MCP Tools
 
-TaskBlaster supports **full printing functionality in Docker** using direct USB communication via ESC/POS protocol.
+MCPOSprint provides 6 MCP tools for task card generation and printing:
 
-### Docker with USB Printer Support
+### Available Tools
 
-```bash
-# Build the container
-docker-compose build
+1. **`process_static_cards`** - Generate cards from markdown files
+   - Parameters: `file` (string), `no_print` (boolean)
+   - Returns: List of generated file paths
 
-# Print cards directly from Docker
-docker-compose run --rm printer uv run taskblaster --static markdown/sample_cards.md
-docker-compose run --rm printer uv run taskblaster --notion
+2. **`process_notion_tasks`** - Fetch and process Notion tasks (with progress tracking)
+   - Parameters: `no_print` (boolean)
+   - Returns: List of generated file paths
+   - Features: Real-time progress updates via Context
 
-# Generate cards without printing
-docker-compose run --rm printer uv run taskblaster --static markdown/sample_cards.md --no-print
-```
+3. **`print_only`** - Print existing image files from directory
+   - Parameters: `directory` (string)
+   - Returns: Success status message
 
-### Docker Configuration for USB Printers
+4. **`test_printer_connection`** - Test thermal printer connectivity
+   - Returns: Connection status message
 
-The `docker-compose.yml` includes:
-- **privileged: true** - Required for USB device access
-- **devices: /dev/bus/usb:/dev/bus/usb** - USB device mounting
-- **Direct ESC/POS printing** - No additional setup required
+5. **`run_diagnostics`** - Run comprehensive system diagnostics
+   - Returns: Detailed diagnostic information
 
-### Printing Mode
+6. **`create_sample_files`** - Generate sample configuration files
+   - Returns: Success status message
 
-**ESC/POS Direct USB**: Direct USB communication, no additional drivers required
+### MCP Resources
 
-```bash
-# Print cards with ESC/POS
-docker-compose run --rm printer uv run taskblaster --static cards.md
-```
+- **`image://thermal-card-size`** - Thermal printer card specifications
+  - Width: 384 pixels (48mm at 203 DPI)
+  - Height: Variable (200-400 pixels)
+  - Format: PNG, monochrome
 
 ## 🖨️ Printer Setup
 
@@ -81,26 +83,24 @@ docker-compose run --rm printer uv run taskblaster --static cards.md
 - **Citizen**: CT-S310II, CT-S4000
 - **Most USB thermal printers** supporting ESC/POS protocol
 
-### Printer Setup
+### Printer Setup via MCP Tools
 
-#### ESC/POS (Direct USB)
-```bash
-# Auto-detection (recommended)
-uv run taskblaster --test-print
+Use the MCP tools to test and configure your printer:
 
-# List USB devices
-lsusb
+```
+# Test printer connection
+Use: test_printer_connection
 
-# Docker usage
-docker-compose run --rm printer uv run taskblaster --test-print
+# Run full diagnostics
+Use: run_diagnostics
 ```
 
 ## Architecture
 
-The application is modularized into clean components:
+The MCP server is modularized into clean components:
 
 ```
-taskblaster/
+mcposprint/
 ├── core/
 │   ├── config.py      # Configuration management
 │   └── printer.py     # Main orchestration class
@@ -113,15 +113,22 @@ taskblaster/
     └── escpos_printer.py  # ESC/POS direct USB interface
 ```
 
-## Configuration
+## 🔧 Configuration
 
 ### Environment Variables
 
 Create a `.env` file based on `.env.example`:
 
 ```bash
+# MCPOSprint Configuration
+# Copy this to .env and fill in your values
+
 # Printer Configuration
 PRINTER_NAME=EPSON_TM_T20III-17
+
+# Card Dimensions (pixels) - optimized for 58mm thermal printers
+CARD_WIDTH=580
+CARD_HEIGHT=580
 
 # Notion Configuration (optional)
 NOTION_API_KEY=your_notion_api_key_here
@@ -146,53 +153,34 @@ Database should have these properties:
 - **Status** (status: Not Started, In Progress, Done)
 - **Description** (rich text, optional)
 
-## Docker Configuration
+## 🎯 MCP Client Setup
 
-### Printer Setup
+### Claude Desktop Configuration
 
-#### USB Printers (Linux hosts)
-```yaml
-# docker-compose.yml includes:
-volumes:
-  - /dev/bus/usb:/dev/bus/usb:rw
-privileged: true
+Add MCPOSprint to your Claude Desktop configuration:
+
+```json
+{
+  "mcpServers": {
+    "mcposprint": {
+      "command": "uv",
+      "args": ["run", "mcposprint"],
+      "cwd": "/path/to/mcposprint"
+    }
+  }
+}
 ```
 
-#### Printer Configuration in Container
-```bash
-# Enter container and test printer detection
-docker-compose run taskblaster bash
+### Usage with MCP Clients
 
-# Test USB printer detection
-uv run taskblaster --test-print
-```
+Once connected, you can use these tools in your MCP client:
 
-### Volume Mounts
-
-The Docker setup includes these mounted directories:
-
-- `./config:/app/config` - Configuration files
-- `./output:/app/output` - Generated card images
-- `./markdown:/app/markdown` - Markdown input files
-
-## Usage Examples
-
-### Command Line Options
-
-```bash
-# Basic commands (after uv sync)
-uv run taskblaster --static cards.md       # Print markdown cards
-uv run taskblaster --notion                # Print Notion tasks
-uv run taskblaster --setup                 # Create sample files
-uv run taskblaster --test-print            # Test printer
-uv run taskblaster --diagnose              # Run diagnostics
-
-# Options
-uv run taskblaster --static cards.md --no-print       # Generate without printing
-uv run taskblaster --output-dir /custom/path          # Custom output directory
-uv run taskblaster --printer-name MY_PRINTER          # Override printer name
-uv run taskblaster --debug                            # Enable debug output
-```
+- **Generate cards from markdown**: Use `process_static_cards` tool
+- **Fetch Notion tasks**: Use `process_notion_tasks` tool (with progress tracking)
+- **Print existing images**: Use `print_only` tool
+- **Test printer**: Use `test_printer_connection` tool
+- **Run diagnostics**: Use `run_diagnostics` tool
+- **Get printer specs**: Access `image://thermal-card-size` resource
 
 ### Markdown Format
 
@@ -214,66 +202,35 @@ uv run taskblaster --debug                            # Enable debug output
 - Use `- Task` for regular tasks
 - Use `- *Task` for priority tasks (marked with ★)
 
-### Docker Commands
-
-```bash
-# One-time setup
-docker-compose build
-docker-compose run taskblaster taskblaster --setup
-
-# Daily usage
-docker-compose run taskblaster taskblaster --notion
-docker-compose run taskblaster taskblaster --static /app/markdown/my_cards.md
-
-# Maintenance
-docker-compose run taskblaster taskblaster --diagnose
-docker-compose run taskblaster bash  # Interactive shell
-```
-
-## Troubleshooting
+## 🔍 Troubleshooting
 
 ### Common Issues
 
 1. **Printer not found**
-   ```bash
-   # Test USB printer detection
-uv run taskblaster --test-print
-
-# Run full diagnostics
-uv run taskblaster --diagnose
-   
-   # List USB devices (Linux/macOS)
-   lsusb
-   ```
+   - Use the `test_printer_connection` MCP tool
+   - Use the `run_diagnostics` MCP tool for detailed information
+   - Check USB connections and printer power
 
 2. **Notion connection fails**
-   ```bash
-   # Verify API key and database ID
-   uv run taskblaster --diagnose
-   
-   # Check database permissions in Notion
-   ```
+   - Use the `run_diagnostics` MCP tool to verify API configuration
+   - Check that your API key is valid in `.env`
+   - Verify database permissions in Notion
+   - Ensure the database ID is correct
 
-3. **Docker printer access**
-   ```bash
-   # Ensure privileged mode and USB device mounting
-   # Check printer detection in container:
-   docker-compose run taskblaster uv run taskblaster --test-print
-   ```
+3. **MCP Server connection issues**
+   - Verify the server is running: `uv run mcposprint`
+   - Check your MCP client configuration
+   - Ensure the working directory path is correct
 
-### Debug Mode
+### Real-time Progress Tracking
 
-Enable detailed error output:
-```bash
-uv run taskblaster --debug --diagnose
-```
+The `process_notion_tasks` tool provides real-time progress updates:
+- ✅ API Success: Found X tasks
+- Processing task 1/3: Task Name
+- ✅ Generated: ./output/file.png
+- ✅ Print Success: Task Name
 
-### Health Check
-
-The Docker container includes a health check:
-```bash
-docker-compose ps  # Check container health
-```
+This prevents client timeouts during long operations.
 
 ## Development
 
@@ -286,23 +243,20 @@ uv sync --all-extras
 pytest
 
 # Format code
-black taskblaster/
-isort taskblaster/
+black mcposprint/
+isort mcposprint/
 
 # Type checking
-mypy taskblaster/
+mypy mcposprint/
 ```
 
-### Building Docker Image
+### Running the MCP Server
 ```bash
-# Build locally
-docker build -t taskblaster .
+# Start the server for development
+uv run mcposprint
 
-# Build with compose
-docker-compose build
-
-# Multi-platform build
-docker buildx build --platform linux/amd64,linux/arm64 -t taskblaster .
+# Test with MCP inspector (if available)
+# Connect your MCP client to localhost
 ```
 
 ## License
@@ -319,15 +273,14 @@ MIT License - see LICENSE file for details.
 
 ## Changelog
 
-### v2.0.0 (Phase 3&4)
+### v1.0.0 - MCPOSprint Initial Release
+- ✅ Full MCP server implementation with 6 tools
+- ✅ Real-time progress tracking with Context support
+- ✅ Async Notion task processing with timeout handling
+- ✅ Thermal printer card generation and printing
+- ✅ Static markdown card processing
 - ✅ Modular architecture with clean separation
-- ✅ Docker containerization with USB printer support
-- ✅ Enhanced configuration management
-- ✅ Improved error handling and diagnostics
-- ✅ Comprehensive documentation
-- ✅ ESC/POS direct USB printing
-
-### v1.0.0 (Phase 1&2)
-- ✅ Static markdown card generation
-- ✅ Notion API integration
-- ✅ Basic CLI interface
+- ✅ Environment-based configuration
+- ✅ ESC/POS direct USB printing support
+- ✅ QR code generation for Notion tasks
+- ✅ Comprehensive error handling and diagnostics
