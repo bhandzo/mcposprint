@@ -36,7 +36,7 @@ class Config:
     
     # Application settings
     debug: bool = os.getenv("DEBUG", "false").lower() == "true"
-    output_dir: str = os.getenv("OUTPUT_DIR", "./output")
+    output_dir: str = os.getenv("OUTPUT_DIR", "./images")
     
     def __post_init__(self):
         """Validate configuration after initialization"""

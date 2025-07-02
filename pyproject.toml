@@ -44,7 +44,7 @@ Issues = "https://github.com/username/mcposprint/issues"
 Documentation = "https://github.com/username/mcposprint#readme"
 
 [project.scripts]
-mcposprint = "server:main"
+mcposprint = "mcposprint.server:main"
 
 [project.optional-dependencies]
 dev = [

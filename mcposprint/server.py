@@ -140,11 +140,11 @@ def run_diagnostics() -> dict:
 
 @mcp.tool()
 def create_sample_files() -> str:
-    """Create sample configuration files"""
+    """Create sample markdown file for testing card generation"""
     config = Config()
     printer = TaskCardPrinter(config)
     printer.create_sample_files()
-    return "Sample files created"
+    return "Sample markdown file created"
 
 @mcp.resource("image://thermal-card-size")
 def get_thermal_card_size() -> str:

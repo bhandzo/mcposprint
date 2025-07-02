@@ -14,10 +14,31 @@ A Model Context Protocol (MCP) server that enables thermal printer task card gen
 
 ## 🚀 Installation
 
-Install MCPOSprint as an MCP server:
+MCPOSprint requires **no installation** - it runs directly via `uvx` when called by Claude Desktop.
+
+### Prerequisites
+
+- **UV package manager**: Install from [astral.sh/uv](https://astral.sh/uv)
+- **Thermal printer** (optional): ESC/POS compatible USB printer
+- **Notion account** (optional): For Notion task integration
+
+### Setup Steps
+
+1. **Install UV** (if not already installed):
+   ```bash
+   curl -LsSf https://astral.sh/uv/install.sh | sh
+   ```
+
+2. **Configure Claude Desktop** with MCPOSprint (see configuration section below)
+
+3. **That's it!** Claude Desktop will automatically download and run MCPOSprint when needed.
+
+### Development Installation (Optional)
+
+Only needed for contributing or customization:
 
 ```bash
-# Clone the repository
+# Clone the repository  
 git clone https://github.com/your-username/mcposprint.git
 cd mcposprint
 
@@ -63,7 +84,7 @@ MCPOSprint provides 6 MCP tools for task card generation and printing:
 5. **`run_diagnostics`** - Run comprehensive system diagnostics
    - Returns: Detailed diagnostic information
 
-6. **`create_sample_files`** - Generate sample configuration files
+6. **`create_sample_files`** - Generate sample markdown file for testing
    - Returns: Success status message
 
 ### MCP Resources
@@ -115,29 +136,25 @@ mcposprint/
 
 ## 🔧 Configuration
 
-### Environment Variables
+### Simple Environment-Based Setup
 
-Create a `.env` file based on `.env.example`:
+Configuration is handled entirely through environment variables in your Claude Desktop configuration. No local files or directories needed!
 
-```bash
-# MCPOSprint Configuration
-# Copy this to .env and fill in your values
+### Available Environment Variables
 
-# Printer Configuration
-PRINTER_NAME=EPSON_TM_T20III-17
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `OUTPUT_DIR` | `./images` | Where generated card images are saved |
+| `PRINTER_NAME` | `EPSON_TM_T20III-17` | Your thermal printer name |
+| `CARD_WIDTH` | `580` | Card width in pixels |
+| `CARD_HEIGHT` | `580` | Card height in pixels |
+| `NOTION_API_KEY` | _(none)_ | Your Notion integration API key |
+| `TASKS_DATABASE_ID` | _(none)_ | Your Notion tasks database ID |
+| `DEBUG` | `false` | Enable debug logging |
 
-# Card Dimensions (pixels) - optimized for 58mm thermal printers
-CARD_WIDTH=580
-CARD_HEIGHT=580
+### Output Directory
 
-# Notion Configuration (optional)
-NOTION_API_KEY=your_notion_api_key_here
-TASKS_DATABASE_ID=your_database_id_here
-
-# Application Settings
-DEBUG=false
-OUTPUT_DIR=./output
-```
+Generated card images are saved to the `OUTPUT_DIR` (default: `./images`) relative to Claude Desktop's working directory. The directory is created automatically if it doesn't exist.
 
 ### Notion Setup
 
@@ -157,19 +174,61 @@ Database should have these properties:
 
 ### Claude Desktop Configuration
 
-Add MCPOSprint to your Claude Desktop configuration:
+#### Minimal Configuration (Recommended)
+
+For most users, just configure your Notion credentials:
 
 ```json
 {
   "mcpServers": {
     "mcposprint": {
-      "command": "uv",
-      "args": ["run", "mcposprint"],
-      "cwd": "/path/to/mcposprint"
+      "command": "uvx",
+      "args": ["mcposprint"],
+      "env": {
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        "NOTION_API_KEY": "your_notion_api_key_here",
+        "TASKS_DATABASE_ID": "your_database_id_here"
+      }
     }
   }
 }
 ```
+
+**Default settings used:**
+- **OUTPUT_DIR**: `./images` (saved relative to Claude Desktop's working directory)
+- **PRINTER_NAME**: `EPSON_TM_T20III-17`
+- **CARD_WIDTH/HEIGHT**: `580` pixels (optimized for 58mm thermal printers)
+
+#### Full Configuration (Advanced)
+
+If you need to override defaults:
+
+```json
+{
+  "mcpServers": {
+    "mcposprint": {
+      "command": "uvx", 
+      "args": ["mcposprint"],
+      "env": {
+        "PATH": "/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin",
+        "OUTPUT_DIR": "./my-custom-images",
+        "PRINTER_NAME": "YOUR_PRINTER_NAME",
+        "CARD_WIDTH": "580",
+        "CARD_HEIGHT": "580", 
+        "NOTION_API_KEY": "your_notion_api_key_here",
+        "TASKS_DATABASE_ID": "your_database_id_here",
+        "DEBUG": "false"
+      }
+    }
+  }
+}
+```
+
+**Configuration Notes:**
+- **PATH**: Adjust for your system (macOS Homebrew path shown)
+- **OUTPUT_DIR**: Where images are saved (relative to Claude Desktop's working directory)
+- **PRINTER_NAME**: Use your actual thermal printer name
+- **Notion credentials**: Optional - only needed for Notion integration
 
 ### Usage with MCP Clients
 

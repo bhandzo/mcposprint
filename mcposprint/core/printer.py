@@ -184,32 +184,8 @@ class TaskCardPrinter:
         return diagnostics
     
     def create_sample_files(self):
-        """Create sample configuration and markdown files"""
-        print("📝 Creating sample files...")
-        
-        # Create sample .env file
-        env_content = """# TaskBlaster Configuration
-# Copy this to .env and fill in your values
-
-# Printer Configuration
-PRINTER_NAME=EPSON_TM_T20III-17
-
-# Card Dimensions (pixels) - optimized for 58mm thermal printers
-CARD_WIDTH=580
-CARD_HEIGHT=580
-
-# Notion Configuration (optional)
-NOTION_API_KEY=your_notion_api_key_here
-TASKS_DATABASE_ID=your_database_id_here
-
-# Application Settings
-DEBUG=false
-OUTPUT_DIR=./output
-"""
-        
-        env_path = Path(".env.example")
-        env_path.write_text(env_content)
-        print(f"💾 Created: {env_path}")
+        """Create sample markdown file for testing card generation"""
+        print("📝 Creating sample markdown file...")
         
         # Create sample markdown file
         markdown_content = self.markdown_parser.create_sample_markdown()
@@ -217,4 +193,5 @@ OUTPUT_DIR=./output
         markdown_path.write_text(markdown_content)
         print(f"💾 Created: {markdown_path}")
         
-        print("✅ Sample files created successfully") 
+        print("✅ Sample markdown file created successfully")
+        print("ℹ️  Configuration is handled via environment variables in your Claude Desktop MCP configuration") 
