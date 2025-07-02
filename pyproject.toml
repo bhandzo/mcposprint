@@ -38,10 +38,10 @@ dependencies = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/username/mcposprint"
-Repository = "https://github.com/username/mcposprint"
-Issues = "https://github.com/username/mcposprint/issues"
-Documentation = "https://github.com/username/mcposprint#readme"
+Homepage = "https://github.com/bhandzo/mcposprint"
+Repository = "https://github.com/bhandzo/mcposprint"
+Issues = "https://github.com/bhandzo/mcposprint/issues"
+Documentation = "https://github.com/bhandzo/mcposprint#readme"
 
 [project.scripts]
 mcposprint = "mcposprint.server:main"
