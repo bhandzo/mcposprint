@@ -3,12 +3,33 @@
 from mcp.server.fastmcp import FastMCP, Context
 from mcposprint import TaskCardPrinter, Config
 from pathlib import Path
+import json
+from mcp import types
+
 
 mcp = FastMCP("MCPOSprint")
 
 @mcp.tool()
-def process_static_cards(file: str, no_print: bool = False) -> list[str]:
-    """Process static markdown cards"""
+def todo_list_cards_from_markdown(file: str, no_print: bool = False) -> list[str]:
+    """Generate and optionally print task cards from a markdown file.
+    
+    Parses a markdown file with task lists (using ## headers and - bullets), generates
+    PNG images for each section, and optionally sends them to your thermal printer.
+    Priority tasks marked with * get a star symbol.
+    
+    Args:
+        file: Path to markdown file (relative to current directory)
+        no_print: If True, only generate images without printing (default: False)
+        
+    Returns:
+        List of generated PNG file paths
+        
+    Example markdown format:
+        ## Morning Tasks
+        - *Get dressed (priority)
+        - Brush teeth
+        - Make coffee
+    """
     config = Config()
     printer = TaskCardPrinter(config)
     print_cards = not no_print
@@ -16,8 +37,27 @@ def process_static_cards(file: str, no_print: bool = False) -> list[str]:
     return generated_files
 
 @mcp.tool()
-async def process_notion_tasks(no_print: bool = False, ctx: Context = None) -> list[str]:
-    """Process today's Notion tasks with progress tracking"""
+async def task_cards_from_notion(no_print: bool = False, ctx: Context = None) -> list[str]:
+    """Fetch today's tasks from Notion and generate thermal printer cards with QR codes.
+    
+    Connects to your Notion database, retrieves tasks with status "Today" or "In Progress", generates individual 
+    task cards with QR codes linking back to Notion, and optionally prints them.
+    Provides real-time progress updates to prevent client timeouts.
+    
+    Requires NOTION_API_KEY and TASKS_DATABASE_ID environment variables.
+    
+    Args:
+        no_print: If True, only generate images without printing (default: False)
+        
+    Returns:
+        List of generated PNG file paths
+        
+    Progress tracking includes:
+        - API connection status
+        - Task fetching progress
+        - Individual card generation
+        - Print success/failure for each card
+    """
     config = Config()
     if not config.has_notion_config:
         raise ValueError("Notion not configured. Run --setup to create configuration files.")
@@ -54,7 +94,14 @@ async def process_notion_tasks(no_print: bool = False, ctx: Context = None) -> l
             # Generate card for this task
             from mcposprint.generators.card import CardGenerator
             card_gen = CardGenerator(config)
-            image_path = card_gen.generate_card(task, f"notion_task_{i+1:02d}")
+            image = card_gen.create_notion_card_image(task)
+            
+            # Save the image
+            import os
+            output_dir = Path(config.output_dir)
+            output_dir.mkdir(exist_ok=True)
+            image_path = output_dir / f"notion_task_{i+1:02d}.png"
+            image.save(image_path)
             generated_files.append(str(image_path))
             
             if ctx:
@@ -91,7 +138,21 @@ async def process_notion_tasks(no_print: bool = False, ctx: Context = None) -> l
 
 @mcp.tool()
 def print_only(directory: str) -> str:
-    """Print existing images from directory"""
+    """Send existing image files to the thermal printer without regenerating them.
+    
+    Scans a directory for PNG/JPG image files and sends them directly to your 
+    thermal printer. Useful for reprinting previously generated cards or printing
+    custom images you've created.
+    
+    Args:
+        directory: Path to directory containing image files
+        
+    Returns:
+        Success message with count of printed images
+        
+    Supported formats: PNG, JPG, JPEG
+    Images are printed in alphabetical order with automatic paper cutting.
+    """
     import glob
     config = Config()
     printer = TaskCardPrinter(config)
@@ -124,7 +185,26 @@ def print_only(directory: str) -> str:
 
 @mcp.tool()
 def test_printer_connection() -> str:
-    """Test printer connection"""
+    """Verify that your thermal printer is connected and responding.
+    
+    Attempts to establish a USB connection to your ESC/POS thermal printer
+    and sends a basic test command. Use this to troubleshoot connection
+    issues before printing actual content.
+    
+    Returns:
+        Success/failure message with connection status
+        
+    Checks:
+        - USB device detection
+        - ESC/POS command response
+        - Printer initialization
+        
+    If this fails, check:
+        - Printer is powered on
+        - USB cable is connected
+        - PRINTER_NAME environment variable matches your device
+        - libusb is installed on your system
+    """
     config = Config()
     printer = TaskCardPrinter(config)
     success = printer.test_printer_connection()
@@ -132,7 +212,28 @@ def test_printer_connection() -> str:
 
 @mcp.tool()
 def run_diagnostics() -> dict:
-    """Run full diagnostics"""
+    """Perform comprehensive system diagnostics for MCPOSprint setup.
+    
+    Runs a complete health check of your MCPOSprint installation, including
+    configuration validation, printer connectivity, Notion API access, and
+    system dependencies. Essential for troubleshooting setup issues.
+    
+    Returns:
+        Detailed diagnostic report as JSON object
+        
+    Diagnostic checks include:
+        - Environment variable configuration
+        - Printer detection and connection
+        - Notion API authentication and database access
+        - Python package dependencies
+        - Output directory permissions
+        - System library availability (libusb, PIL, etc.)
+        
+    Use this when:
+        - Setting up MCPOSprint for the first time
+        - Troubleshooting printing or Notion connection issues
+        - Verifying configuration after changes
+    """
     config = Config()
     printer = TaskCardPrinter(config)
     diagnostics = printer.run_diagnostics()
@@ -140,23 +241,70 @@ def run_diagnostics() -> dict:
 
 @mcp.tool()
 def create_sample_files() -> str:
-    """Create sample markdown file for testing card generation"""
+    """Generate a sample markdown file to test MCPOSprint functionality.
+    
+    Creates 'sample_cards.md' in the current directory with example task lists
+    formatted for MCPOSprint. Perfect for testing your setup or learning
+    the markdown format before creating your own task lists.
+    
+    Returns:
+        Success message confirming file creation
+        
+    Generated file includes:
+        - Multiple task sections (Morning, Work, Evening)
+        - Examples of priority tasks (marked with *)
+        - Proper formatting with ## headers and - bullets
+        
+    Use the generated file with process_static_cards tool to test printing.
+    Configuration is handled via environment variables in your MCP client.
+    """
     config = Config()
     printer = TaskCardPrinter(config)
     printer.create_sample_files()
     return "Sample markdown file created"
 
 @mcp.resource("image://thermal-card-size")
-def get_thermal_card_size() -> str:
-    """Get thermal printer card size specifications"""
-    return """Thermal Card Size Specifications:
-- Width: 384 pixels (48mm at 203 DPI)
-- Height: Variable (typically 200-400 pixels)
-- DPI: 203 (8 dots/mm)
-- Format: PNG recommended
-- Color: Monochrome (black and white)
-- Margins: 8px on all sides recommended"""
-
+def get_thermal_card_size() -> types.Resource:
+    """Get detailed thermal printer card size specifications and constraints.
+    
+    Provides comprehensive technical specifications for designing images that will
+    print correctly on ESC/POS thermal printers. Essential reference for custom
+    image creation or understanding MCPOSprint's card generation parameters.
+    """
+    specs = {
+        "width": {
+            "pixels": 384,
+            "mm": 48,
+            "constraint": "fixed",
+            "description": "Determined by thermal paper roll width"
+        },
+        "length": {
+            "constraint": "unlimited", 
+            "typical_range": [200, 600],
+            "description": "Controls paper feed length - minimize for efficiency"
+        },
+        "dpi": 203,
+        "dots_per_mm": 8,
+        "format": "PNG",
+        "color_mode": "monochrome",
+        "margins": {
+            "recommended": 8,
+            "unit": "pixels",
+            "all_sides": True
+        },
+        "notes": [
+            "Length determines paper consumption",
+            "Width cannot exceed hardware limit", 
+            "ESC/POS commands control cutting and feeding"
+        ]
+    }
+    
+    return types.Resource(
+        uri="image://thermal-card-size",
+        name="Thermal Printer Card Specifications",
+        mimeType="application/json",
+        text=json.dumps(specs, indent=2)
+    )
 def main():
     """Entry point for script execution"""
     mcp.run()

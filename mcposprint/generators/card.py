@@ -18,8 +18,9 @@ class CardGenerator:
     def _load_fonts(self):
         """Load fonts with fallback to default"""
         try:
-            self.title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", self.config.title_font_size)
-            self.task_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", self.config.task_font_size)
+            # Reduce font sizes by 20%
+            self.title_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", int(self.config.title_font_size * 0.8))
+            self.task_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", int(self.config.task_font_size * 0.8))
         except:
             self.title_font = ImageFont.load_default()
             self.task_font = ImageFont.load_default()
@@ -70,9 +71,9 @@ class CardGenerator:
                       outline='black', width=self.config.border_width)
         
         # Load fonts with different sizes for Notion cards (proportional to card size)
-        # Made 20% bigger from current size
-        notion_task_font_size = int(max(20, self.config.card_width // 29) * 3.9 * 1.2)  # 20% bigger ~94px for 580px cards
-        notion_title_font_size = int(max(16, self.config.card_width // 36) * 3.6 * 1.2)  # 20% bigger ~68px for 580px cards
+        # Reduced by 20% from the original 20% bigger size
+        notion_task_font_size = int(max(20, self.config.card_width // 29) * 3.9 * 0.8)  # 20% smaller ~75px for 580px cards
+        notion_title_font_size = int(max(16, self.config.card_width // 36) * 3.6 * 0.8)  # 20% smaller ~54px for 580px cards
         
         try:
             task_font = ImageFont.truetype("/System/Library/Fonts/Helvetica.ttc", notion_task_font_size)
@@ -129,32 +130,32 @@ class CardGenerator:
         max_title_width = self.config.card_width - (2 * self.margin)  # margins on each side
         title_lines = wrap_text(title_text, title_font, max_title_width)
         
-        # Draw wrapped title (max 2 lines due to larger text)
-        line_height = max(85, self.config.card_width // 7)  # ~85px for 580px cards (even larger for 20% bigger text)
-        for i, line in enumerate(title_lines[:2]):  # Reduced to 2 lines due to larger text
+        # Draw wrapped title (max 3 lines with smaller text)
+        line_height = max(68, self.config.card_width // 9)  # ~68px for 580px cards (smaller for 20% smaller text)
+        for i, line in enumerate(title_lines[:3]):  # Allow up to 3 lines
             draw.text((title_x, title_y + i * line_height), line, fill='black', font=title_font)
         
         # Add ellipsis if title was truncated
-        if len(title_lines) > 2:
-            # Replace last few characters of 2nd line with ellipsis
-            last_line = title_lines[1]
+        if len(title_lines) > 3:
+            # Replace last few characters of 3rd line with ellipsis
+            last_line = title_lines[2]
             if len(last_line) > 3:
                 truncated_line = last_line[:-3] + "..."
-                draw.text((title_x, title_y + 1 * line_height), truncated_line, fill='black', font=title_font)
+                draw.text((title_x, title_y + 2 * line_height), truncated_line, fill='black', font=title_font)
         
-        spacing = max(25, self.config.card_width // 23)  # ~25px for 580px cards (more spacing for larger text)
-        y_pos = title_y + min(len(title_lines), 2) * line_height + spacing
+        spacing = max(20, self.config.card_width // 29)  # ~20px for 580px cards (less spacing for smaller text)
+        y_pos = title_y + min(len(title_lines), 3) * line_height + spacing
         
         # Draw due date if provided
         if task_data.get('due_date'):
             due_text = f"Due: {task_data['due_date']}"
             draw.text((title_x, y_pos), due_text, fill='red', font=task_font)
-            y_pos += max(110, self.config.card_width // 5)  # ~110px for 580px cards (more spacing for even larger text)
+            y_pos += max(88, self.config.card_width // 7)  # ~88px for 580px cards (less spacing for smaller text)
         
         # Draw description/content if provided (leave space for QR code at bottom)
         if task_data.get('content'):
             content_text = task_data['content']
-            max_chars = 35
+            max_chars = 45  # Increased from 35 since text is smaller
             
             if len(content_text) > max_chars:
                 words = content_text.split()
@@ -174,10 +175,10 @@ class CardGenerator:
                     lines.append(current_line)
                 
                 # Draw wrapped content (leave space for QR code at bottom)
-                content_line_height = max(110, self.config.card_width // 5)  # ~110px for 580px cards (even larger for 20% bigger text)
+                content_line_height = max(88, self.config.card_width // 7)  # ~88px for 580px cards (smaller for 20% smaller text)
                 qr_margin = max(60, self.config.card_width // 10)  # ~60px for 580px cards (more margin for bigger QR)
                 
-                for i, line in enumerate(lines[:3]):  # Reduced to 3 lines due to larger text and bigger QR
+                for i, line in enumerate(lines[:4]):  # Allow up to 4 lines for content with smaller text
                     if y_pos > self.config.card_height - self.qr_size - qr_margin:  # Stop before QR code area
                         break
                     draw.text((title_x, y_pos + i * content_line_height), line, fill='black', font=task_font)
@@ -191,14 +192,14 @@ class CardGenerator:
     def _draw_title(self, draw: ImageDraw.Draw, title: str):
         """Draw title text with word wrapping"""
         # Handle long titles by wrapping
-        if len(title) > 30:
+        if len(title) > 35:  # Increased from 30 since text is smaller
             words = title.split()
             lines = []
             current_line = ""
             
             for word in words:
                 test_line = current_line + (" " if current_line else "") + word
-                if len(test_line) <= 30:
+                if len(test_line) <= 35:
                     current_line = test_line
                 else:
                     if current_line:
@@ -210,8 +211,8 @@ class CardGenerator:
             
             # Draw wrapped title
             y_offset = 0
-            title_line_spacing = max(35, self.config.card_width // 17)  # ~35px for 580px cards (much more spacing)
-            for i, line in enumerate(lines[:2]):  # Max 2 lines
+            title_line_spacing = max(28, self.config.card_width // 21)  # ~28px for 580px cards (less spacing for smaller text)
+            for i, line in enumerate(lines[:3]):  # Allow up to 3 lines
                 bbox = draw.textbbox((0, 0), line, font=self.title_font)
                 text_width = bbox[2] - bbox[0]
                 text_x = (self.config.card_width - text_width) // 2
@@ -237,8 +238,8 @@ class CardGenerator:
             if y_pos > self.config.card_height - max(60, self.config.card_width // 10):  # More space at bottom
                 break
             
-            # Draw checkbox (larger for better visibility)
-            checkbox_size = max(35, self.config.card_width // 17)  # ~35px for 580px cards
+            # Draw checkbox (slightly smaller due to smaller text)
+            checkbox_size = max(28, self.config.card_width // 21)  # ~28px for 580px cards (smaller for smaller text)
             checkbox_x = self.margin
             checkbox_y = y_pos
             draw.rectangle([checkbox_x, checkbox_y, 
@@ -260,13 +261,13 @@ class CardGenerator:
             text_x = checkbox_x + checkbox_size + text_spacing
             text_y = checkbox_y + 2  # Align better with checkbox
             
-            task_line_height = max(30, self.config.card_width // 19)  # ~30px for 580px cards (much more spacing)
-            for line in wrapped_text[:2]:  # Max 2 lines per task
+            task_line_height = max(24, self.config.card_width // 24)  # ~24px for 580px cards (less spacing for smaller text)
+            for line in wrapped_text[:3]:  # Allow up to 3 lines per task
                 draw.text((text_x, text_y), line, fill='black', font=self.task_font)
                 text_y += task_line_height
             
-            # Much more spacing between tasks
-            task_spacing = max(45, len(wrapped_text) * task_line_height) + task_line_height  # Full line spacing between tasks
+            # Adjusted spacing between tasks
+            task_spacing = max(36, len(wrapped_text) * task_line_height) + task_line_height  # Adjusted spacing between tasks
             y_pos += task_spacing
     
     def _wrap_text(self, text: str, font: ImageFont.ImageFont, max_width: int) -> List[str]:

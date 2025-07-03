@@ -51,10 +51,8 @@ ehthumbs.db
 Thumbs.db
 
 # Output directories
+images/
 output/
-*.png
-*.jpg
-*.jpeg
 
 # Logs
 *.log
