@@ -113,7 +113,7 @@ class NotionParser:
             }
             
         except Exception as e:
-            print(f"Error formatting task data: {e}")
+            # Silently handle error - could add logging here if needed
             return None
     
     def test_connection(self) -> bool:

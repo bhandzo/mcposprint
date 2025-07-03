@@ -10,8 +10,9 @@ from ..core.config import Config
 class EscposPrinter:
     """ESC/POS printer interface for direct USB thermal printer communication"""
     
-    def __init__(self, config: Config):
+    def __init__(self, config: Config, ctx=None):
         self.config = config
+        self.ctx = ctx
         self.device = None
         self._connect()
     
@@ -20,8 +21,15 @@ class EscposPrinter:
         try:
             self.device = self._autodetect_usb_device()
         except Exception as e:
-            print(f"⚠️ Failed to connect to USB printer: {e}")
+            self._log(f"⚠️ Failed to connect to USB printer: {e}")
             self.device = None
+    
+    def _log(self, message: str):
+        """Log message to context if available, otherwise print"""
+        if self.ctx:
+            self.ctx.info(message)
+        else:
+            print(message)
     
     def _get_usb_devices(self) -> List[Dict[str, Any]]:
         """Get USB devices using pyusb"""
@@ -66,7 +74,7 @@ class EscposPrinter:
             
             return devices
         except Exception as e:
-            print(f"⚠️ Error listing USB devices: {e}")
+            self._log(f"⚠️ Error listing USB devices: {e}")
             return []
     
     def _autodetect_usb_device(self):
@@ -106,15 +114,15 @@ class EscposPrinter:
         selected = preferred or devices[0]
         
         vendor_name = thermal_vendors.get(selected['vendor_id'], selected['manufacturer'])
-        print(f"🖨️ Connecting to printer: {vendor_name} ({hex(selected['vendor_id'])}:{hex(selected['product_id'])})")
-        print(f"   Description: {selected['description']}")
+        self._log(f"🖨️ Connecting to printer: {vendor_name} ({hex(selected['vendor_id'])}:{hex(selected['product_id'])})")
+        self._log(f"   Description: {selected['description']}")
         
         return Usb(selected['vendor_id'], selected['product_id'])
     
     def print_image(self, image: Image.Image, cut_after: bool = True, is_last_card: bool = False) -> bool:
         """Print PIL image to ESC/POS thermal printer"""
         if not self.device:
-            print("❌ No printer device connected")
+            self._log("❌ No printer device connected")
             return False
         
         try:
@@ -131,17 +139,17 @@ class EscposPrinter:
                 cut_mode = 'FULL' if is_last_card else 'PART'
                 self.device.cut(mode=cut_mode)
             
-            print("✓ Printed card successfully")
+            self._log("✓ Printed card successfully")
             return True
             
         except Exception as e:
-            print(f"❌ ESC/POS print failed: {e}")
+            self._log(f"❌ ESC/POS print failed: {e}")
             return False
     
     def print_text_and_qr(self, text: str, qr_data: Optional[str] = None) -> bool:
         """Print text and optional QR code"""
         if not self.device:
-            print("❌ No printer device connected")
+            self._log("❌ No printer device connected")
             return False
         
         try:
@@ -157,25 +165,25 @@ class EscposPrinter:
             return True
             
         except Exception as e:
-            print(f"❌ ESC/POS text/QR print failed: {e}")
+            self._log(f"❌ ESC/POS text/QR print failed: {e}")
             return False
     
     def test_connection(self) -> bool:
         """Test ESC/POS printer connection"""
-        print("🔧 Testing ESC/POS printer connection...")
+        self._log("🔧 Testing ESC/POS printer connection...")
         
         if not self.device:
-            print("❌ No printer device connected")
+            self._log("❌ No printer device connected")
             return False
         
         try:
             self.device.text("Task Card Printer Test\nESC/POS connection successful!\n")
             self.device.cut()
-            print("✅ ESC/POS test print successful!")
+            self._log("✅ ESC/POS test print successful!")
             return True
             
         except Exception as e:
-            print(f"❌ ESC/POS test failed: {e}")
+            self._log(f"❌ ESC/POS test failed: {e}")
             return False
     
     def get_printer_status(self) -> Dict[str, Any]:
@@ -198,10 +206,10 @@ class EscposPrinter:
             if not devices:
                 status['error_messages'].append("No USB devices found")
             else:
-                print(f"📋 Found {len(devices)} USB device(s):")
+                self._log(f"📋 Found {len(devices)} USB device(s):")
                 for i, device in enumerate(devices):
                     manufacturer = device.get('manufacturer', 'Unknown')
-                    print(f"  {i+1}. {manufacturer} ({hex(device['vendor_id'])}:{hex(device['product_id'])}) - {device['description']}")
+                    self._log(f"  {i+1}. {manufacturer} ({hex(device['vendor_id'])}:{hex(device['product_id'])}) - {device['description']}")
         except Exception as e:
             status['error_messages'].append(f"Failed to list USB devices: {e}")
         

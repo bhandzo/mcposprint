@@ -31,7 +31,7 @@ def todo_list_cards_from_markdown(file: str, no_print: bool = False) -> list[str
         - Make coffee
     """
     config = Config()
-    printer = TaskCardPrinter(config)
+    printer = TaskCardPrinter(config)  # No ctx for non-async functions
     print_cards = not no_print
     generated_files = printer.process_static_cards(file, print_cards=print_cards)
     return generated_files
@@ -65,7 +65,7 @@ async def task_cards_from_notion(no_print: bool = False, ctx: Context = None) ->
     if ctx:
         ctx.info("Initializing Notion task processing...")
     
-    printer = TaskCardPrinter(config)
+    printer = TaskCardPrinter(config, ctx)
     print_cards = not no_print
     
     try:

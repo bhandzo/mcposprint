@@ -307,5 +307,5 @@ class CardGenerator:
             
             return qr.make_image(fill_color="black", back_color="white")
         except Exception as e:
-            print(f"Error generating QR code: {e}")
+            # Silently handle error - could add logging here if needed
             return None 
