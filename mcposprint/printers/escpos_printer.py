@@ -25,11 +25,14 @@ class EscposPrinter:
             self.device = None
     
     def _log(self, message: str):
-        """Log message to context if available, otherwise print"""
+        """Log message to context if available, otherwise use file logger"""
         if self.ctx:
             self.ctx.info(message)
         else:
-            print(message)
+            # Use file-based logging only - NO stdout/stderr output for MCP compatibility
+            import logging
+            logger = logging.getLogger('mcposprint.printer')
+            logger.info(message.replace('🖨️', '').replace('📖', '').replace('✅', '').replace('❌', '').replace('⚠️', '').strip())
     
     def _get_usb_devices(self) -> List[Dict[str, Any]]:
         """Get USB devices using pyusb"""
