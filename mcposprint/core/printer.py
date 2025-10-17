@@ -2,11 +2,16 @@
 
 from typing import List, Dict, Any, Optional
 from pathlib import Path
+import os
+import logging
 from .config import Config
 from ..parsers.markdown import MarkdownParser
 from ..parsers.notion import NotionParser
 from ..generators.card import CardGenerator
 from ..printers.escpos_printer import EscposPrinter
+
+# Get logger for this module
+logger = logging.getLogger('mcposprint.printer')
 
 class TaskCardPrinter:
     """Main class for generating and printing task cards"""
@@ -32,11 +37,12 @@ class TaskCardPrinter:
                 self._log(f"⚠️ Notion not configured: {e}")
     
     def _log(self, message: str):
-        """Log message to context if available, otherwise print"""
+        """Log message to context if available, otherwise use file logger"""
         if self.ctx:
             self.ctx.info(message)
         else:
-            self._log(message)
+            # Use file-based logging only - NO stdout/stderr output
+            logger.info(message.replace('🖨️', '').replace('📖', '').replace('✅', '').replace('❌', '').strip())
     
     def process_static_cards(self, markdown_file: str, print_cards: bool = True) -> List[str]:
         """Process static markdown cards and optionally print them"""

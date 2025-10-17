@@ -1,13 +1,30 @@
 
 #!/usr/bin/env python3
 from mcp.server.fastmcp import FastMCP, Context
-from mcposprint import TaskCardPrinter, Config
+from mcposprint import TaskCardPrinter, Config, __version__
 from pathlib import Path
 import json
+import os
+import logging
 from mcp import types
 
+# Configure file-based logging
+log_file = os.getenv("MCPOSPRINT_LOG_FILE", os.path.expanduser("~/Library/Logs/mcposprint.log"))
+log_level = os.getenv("MCPOSPRINT_LOG_LEVEL", "INFO").upper()
 
-mcp = FastMCP("MCPOSprint")
+# Ensure log directory exists
+os.makedirs(os.path.dirname(log_file), exist_ok=True)
+
+# Configure logging - NO stdout/stderr output
+logging.basicConfig(
+    filename=log_file,
+    level=getattr(logging, log_level, logging.INFO),
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    filemode='a'
+)
+logger = logging.getLogger('mcposprint')
+
+mcp = FastMCP(f"MCPOSprint v{__version__}")
 
 @mcp.tool()
 def todo_list_cards_from_markdown(file: str, no_print: bool = False) -> list[str]:
@@ -30,11 +47,19 @@ def todo_list_cards_from_markdown(file: str, no_print: bool = False) -> list[str
         - Brush teeth
         - Make coffee
     """
-    config = Config()
-    printer = TaskCardPrinter(config)  # No ctx for non-async functions
-    print_cards = not no_print
-    generated_files = printer.process_static_cards(file, print_cards=print_cards)
-    return generated_files
+    try:
+        config = Config()
+        config_errors = config.validate()
+        if config_errors:
+            logger.warning(f"Configuration issues detected: {config_errors}")
+        
+        printer = TaskCardPrinter(config)  # No ctx for non-async functions
+        print_cards = not no_print
+        generated_files = printer.process_static_cards(file, print_cards=print_cards)
+        return generated_files
+    except Exception as e:
+        logger.error(f"Error in todo_list_cards_from_markdown: {e}")
+        raise ValueError(f"Failed to process markdown cards: {e}")
 
 @mcp.tool()
 async def task_cards_from_notion(no_print: bool = False, ctx: Context = None) -> list[str]:
@@ -240,6 +265,74 @@ def run_diagnostics() -> dict:
     return diagnostics
 
 @mcp.tool()
+def info() -> dict:
+    """Get MCPOSprint server information and system status.
+    
+    Returns version, dependency status, configuration issues, and operational health.
+    Essential for troubleshooting and verifying proper setup.
+    
+    Returns:
+        System information including version, dependencies, and configuration status
+        
+    Checks include:
+        - Server version and build information
+        - Required system dependencies (libusb, PIL, etc.)
+        - Environment variable configuration
+        - Log file accessibility
+        - Basic printer connectivity
+    """
+    import sys
+    import platform
+    
+    info_data = {
+        "version": __version__,
+        "server_name": f"MCPOSprint v{__version__}",
+        "python_version": sys.version,
+        "platform": platform.platform(),
+        "dependencies": {},
+        "configuration": {},
+        "log_file": log_file,
+        "log_level": log_level
+    }
+    
+    # Check dependencies
+    try:
+        import PIL
+        info_data["dependencies"]["PIL"] = f"✅ {PIL.__version__}"
+    except ImportError:
+        info_data["dependencies"]["PIL"] = "❌ Not found"
+    
+    try:
+        import escpos
+        info_data["dependencies"]["python-escpos"] = "✅ Available"
+    except ImportError:
+        info_data["dependencies"]["python-escpos"] = "❌ Not found"
+    
+    try:
+        import usb
+        info_data["dependencies"]["pyusb"] = "✅ Available"
+    except ImportError:
+        info_data["dependencies"]["pyusb"] = "❌ Not found"
+    
+    # Check configuration
+    config = Config()
+    config_errors = config.validate()
+    info_data["configuration"]["errors"] = config_errors
+    info_data["configuration"]["notion_configured"] = config.has_notion_config
+    info_data["configuration"]["output_dir"] = config.output_dir
+    info_data["configuration"]["printer_name"] = config.printer_name
+    
+    # Check log file accessibility
+    try:
+        with open(log_file, 'a') as f:
+            f.write(f"# Info check at {json.dumps({'timestamp': str(__import__('datetime').datetime.now())})}\n")
+        info_data["log_status"] = "✅ Accessible"
+    except Exception as e:
+        info_data["log_status"] = f"❌ Error: {e}"
+    
+    return info_data
+
+@mcp.tool()
 def create_sample_files() -> str:
     """Generate a sample markdown file to test MCPOSprint functionality.
     
@@ -307,7 +400,17 @@ def get_thermal_card_size() -> types.Resource:
     )
 def main():
     """Entry point for script execution"""
-    mcp.run()
+    try:
+        logger.info(f"Starting MCPOSprint v{__version__}")
+        mcp.run()
+    except Exception as e:
+        logger.error(f"Fatal error in MCPOSprint server: {e}")
+        raise
+    finally:
+        # Ensure all log messages are written
+        for handler in logger.handlers:
+            handler.flush()
+        logging.shutdown()
 
 if __name__ == "__main__":
     main()

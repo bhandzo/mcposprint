@@ -5,7 +5,7 @@ A modular MCP server for generating and printing task cards from markdown and No
 Optimized for thermal printers with direct USB ESC/POS printing.
 """
 
-__version__ = "2.0.0"
+__version__ = "1.0.0"
 __author__ = "MCPOSprint Team"
 
 from .core.config import Config
